@@ -22,17 +22,19 @@ type xdccContent struct {
 	LastModified  string `json: "lastModified"`
 }
 
-type suggestedQuery struct {
-	Suggestion        string      `json: "suggestion"`
-	SuggestionContent xdccContent `json: "suggestionContent"`
+type tempSuggested struct {
+	Suggestion        string        `json: "suggestion"`
+	SuggestionContent []xdccContent `json: "suggestionContent"`
 }
 
-func searchMain() {
+// type compiledSuggest
+
+func tempSearchMain() []tempSuggested {
 	query := "gamers"
 	episodeNumber := 4
 	quality := "720p"
 	temp := xdcc{}
-	var collection []suggestedQuery
+	var collection []tempSuggested
 	// make a slice for suggestions
 	tempSuggestion := findPacklist(query, episodeNumber, quality, &temp, collection)
 	// pretty print tempSuggestion
@@ -41,10 +43,10 @@ func searchMain() {
 
 	// form the query here once you figure out what the user wants
 	// ex. gamers! 9 will return did you mean [HorribleSubs] Gamers! - 09[480].mkv?
-	botMain(query, episodeNumber, quality, &temp)
+	return tempSuggestion
 }
 
-func findPacklist(query string, episode int, quality string, x *xdcc, collection []suggestedQuery) []suggestedQuery {
+func findPacklist(query string, episode int, quality string, x *xdcc, collection []tempSuggested) []tempSuggested {
 	queryString := fmt.Sprintf("https://api.nibl.co.uk:8080/nibl/search?query=%s&episodeNumber=%d", query, episode)
 	getJSON(queryString, x)
 
@@ -59,7 +61,7 @@ func findPacklist(query string, episode int, quality string, x *xdcc, collection
 	return collection
 }
 
-func createSuggestion(episode int, quality string, x *xdcc, collection []suggestedQuery) []suggestedQuery {
+func createSuggestion(episode int, quality string, x *xdcc, collection []tempSuggested) []tempSuggested {
 	for _, j := range x.Content {
 		// fmt.Println(j.Name)
 		// regex the stuff here, use a function i guess
@@ -67,11 +69,27 @@ func createSuggestion(episode int, quality string, x *xdcc, collection []suggest
 		// combine the information from content with the slice that you'll create
 		suggest := expCheck(j.Name, episode, quality)
 		if len(suggest) > 0 {
-			temp := suggestedQuery{
-				Suggestion:        suggest,
-				SuggestionContent: j,
+			if len(collection) == 0 {
+				var tempSuggestionContent []xdccContent
+				temp := tempSuggested{
+					Suggestion:        suggest,
+					SuggestionContent: append(tempSuggestionContent, j),
+				}
+				collection = append(collection, temp)
+			} else if len(collection) > 0 {
+				for k, l := range collection {
+					if suggest == l.Suggestion {
+						collection[k].SuggestionContent = append(collection[k].SuggestionContent, j)
+					} else {
+						var tempSuggestionContent []xdccContent
+						temp := tempSuggested{
+							Suggestion:        suggest,
+							SuggestionContent: append(tempSuggestionContent, j),
+						}
+						collection = append(collection, temp)
+					}
+				}
 			}
-			collection = append(collection, temp)
 		}
 	}
 	return collection

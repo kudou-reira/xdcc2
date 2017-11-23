@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,17 +9,22 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type data struct {
+	TempSearch []tempSuggested `json:"tempSearches"`
+}
+
 func main() {
 	r := mux.NewRouter()
 	// routes consist of a path and a handler function.
-	r.HandleFunc("/xdcc", xdccMain).Methods("GET")
+	r.HandleFunc("/xdccTempSearch", xdccTempSearch).Methods("GET")
+	r.HandleFunc("/xdccBotSearch", xdccBotSearch).Methods("GET")
 
 	// bind to a port and pass our router in
 	http.Handle("/", &middleWareServer{r})
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func xdccMain(w http.ResponseWriter, r *http.Request) {
+func xdccTempSearch(w http.ResponseWriter, r *http.Request) {
 	if r != nil {
 		err := r.ParseForm()
 		if err != nil {
@@ -30,12 +36,50 @@ func xdccMain(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("card type", query["cardType"])
 		fmt.Println("url value", query["pageLink"])
 
+		t := tempSearchMain()
+
+		d := data{TempSearch: t}
+
+		tempSearchJSON, err := json.Marshal(d)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		w.Write(tempSearchJSON)
 
-		searchMain()
+		// temp := []byte("this is searchXDCC")
+		// w.Write(temp)
+	}
+}
 
-		temp := []byte("this is searchXDCC")
+func xdccBotSearch(w http.ResponseWriter, r *http.Request) {
+	if r != nil {
+		err := r.ParseForm()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		query := r.Form
+
+		fmt.Println("card type", query["cardType"])
+		fmt.Println("url value", query["pageLink"])
+
+		botSearchMain()
+
+		// d := data{TempSearch: t}
+
+		// tempSearchJSON, err := json.Marshal(d)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+
+		// w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// w.Write(tempSearchJSON)
+
+		temp := []byte("this is searchXDCC for bots")
 		w.Write(temp)
 	}
 }
