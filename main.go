@@ -9,8 +9,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type data struct {
+type dataTemp struct {
 	TempSearch []tempSuggested `json:"tempSearches"`
+}
+
+type dataBot struct {
+	BotSearch []groupBots `json:"botSearches"`
 }
 
 func main() {
@@ -38,7 +42,7 @@ func xdccTempSearch(w http.ResponseWriter, r *http.Request) {
 
 		t := tempSearchMain()
 
-		d := data{TempSearch: t}
+		d := dataTemp{TempSearch: t}
 
 		tempSearchJSON, err := json.Marshal(d)
 		if err != nil {
@@ -66,21 +70,21 @@ func xdccBotSearch(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("card type", query["cardType"])
 		fmt.Println("url value", query["pageLink"])
 
-		botSearchMain()
+		b := botSearchMain()
 
-		// d := data{TempSearch: t}
+		d := dataBot{BotSearch: b}
 
-		// tempSearchJSON, err := json.Marshal(d)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
+		botSearchJSON, err := json.Marshal(d)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		// w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		// w.Write(tempSearchJSON)
+		w.Write(botSearchJSON)
 
-		temp := []byte("this is searchXDCC for bots")
-		w.Write(temp)
+		// temp := []byte("this is searchXDCC for bots")
+		// w.Write(temp)
 	}
 }
 
