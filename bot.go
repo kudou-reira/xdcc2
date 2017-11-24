@@ -3,21 +3,27 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/headzoo/surf"
 )
 
 type bots struct {
-	Content []botContent `json: "content"`
+	Content []groupBots `json: "content"`
+}
+
+type groupBots struct {
+	FileName   string       `json: "fileName"`
+	BotSpecies []botContent `json: "botSpecies"`
 }
 
 type botContent struct {
-	BotName    string `json: "botName"`
-	PackNumber string `json: "packNumber"`
-	FileSize   string `json: "fileSize"`
-	FileName   string `json: "fileName"`
+	BotName     string `json: "botName"`
+	PackNumber  string `json: "packNumber"`
+	FileSize    string `json: "fileSize"`
+	FileName    string `json: "fileName"`
+	MessageCall string `json: "messageCall"`
 }
 
 func botSearchMain() {
@@ -25,13 +31,15 @@ func botSearchMain() {
 	// https://nibl.co.uk/bots.php?search=[HorribleSubs] Gamers! - 04 [720p]
 
 	botLink := "https://nibl.co.uk/bots.php?search="
-	botQuery := "[HorribleSubs] Gamers! - 04 [720p]"
+	// botQuery := "[HorribleSubs] Gamers! - 04 [720p]"
+	// botQuery := "gamers 04"
+	botQuery := "net-juu 08"
 	combinedBotQuery := botLink + botQuery
 	newCombinedQuery := strings.Replace(combinedBotQuery, " ", "%20", -1)
 	// testCombine := "https://nibl.co.uk/bots.php?search=gamers"
 	fmt.Println("this is replaced strings", newCombinedQuery)
 
-	var botCollection []botContent
+	var botCollection []groupBots
 	// format the combinedBotQuery
 	// replace spaces with %20
 	tempBotCollection := accessBotPage(newCombinedQuery, botCollection)
@@ -40,23 +48,33 @@ func botSearchMain() {
 	fmt.Println(string(slcT))
 }
 
-func accessBotPage(combinedQuery string, collection []botContent) []botContent {
+func accessBotPage(combinedQuery string, collection []groupBots) []groupBots {
 	// var wg sync.WaitGroup
+	waitBot := make(chan []groupBots)
+
 	// wg.Add(1)
-	return scrapeBotPage(combinedQuery, collection)
+	go scrapeBotPage(combinedQuery, collection, waitBot)
 	// wg.Wait()
+	result := <-waitBot
+	return result
 }
 
-func scrapeBotPage(combinedQuery string, collection []botContent) []botContent {
+func scrapeBotPage(combinedQuery string, collection []groupBots, waitBot chan []groupBots) {
 	fmt.Println("scrapeBotPage is running")
+
 	// doc.find isn't running
-	bow := surf.NewBrowser()
-	err := bow.Open(combinedQuery)
+	// bow := surf.NewBrowser()
+	// err := bow.Open(combinedQuery)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	doc, err := goquery.NewDocument(combinedQuery)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	bow.Dom().Find(".botlistitem").Each(func(index int, item *goquery.Selection) {
+	doc.Find(".botlistitem").Each(func(index int, item *goquery.Selection) {
 		// use index to determine if jp event only/event character only
 		// fmt.Println("botname is", item.Text())
 		fmt.Println(index)
@@ -67,21 +85,49 @@ func scrapeBotPage(combinedQuery string, collection []botContent) []botContent {
 		fileName := item.Find(".filename").Text()
 
 		tempBot := botContent{
-			BotName:    botName,
-			PackNumber: packNumber,
-			FileSize:   fileSize,
-			FileName:   formatFileName(fileName),
+			BotName:     botName,
+			PackNumber:  packNumber,
+			FileSize:    fileSize,
+			FileName:    formatFileName(fileName),
+			MessageCall: createMessage(botName, packNumber),
 		}
 
-		collection = append(collection, tempBot)
+		fmt.Println("this is the filename", fileName)
+		fmt.Println("this is the botName", botName)
 
-		// fmt.Println("botname is", botName)
-		// fmt.Println("packNumber is", packNumber)
-		// fmt.Println("filesize is", fileSize)
-		// fmt.Println("filename is", fileName)
+		// add quality to tempGroupBot
 
+		if index == 0 {
+			var tempCollection []botContent
+			tempGroupBot := groupBots{
+				FileName:   tempBot.FileName,
+				BotSpecies: append(tempCollection, tempBot),
+			}
+			collection = append(collection, tempGroupBot)
+		} else {
+			inCollection := false
+			for i := range collection {
+				// if same file name, FINE
+				// keeps appending on new last one because it's still going over infinite collection
+				if collection[i].FileName == tempBot.FileName {
+					collection[i].BotSpecies = append(collection[i].BotSpecies, tempBot)
+					inCollection = true
+				}
+			}
+
+			if inCollection == false {
+				var tempCollection []botContent
+				tempGroupBot := groupBots{
+					FileName:   tempBot.FileName,
+					BotSpecies: append(tempCollection, tempBot),
+				}
+				collection = append(collection, tempGroupBot)
+			}
+
+			fmt.Println("this is the else statement")
+		}
 	})
-	return collection
+	waitBot <- collection
 }
 
 func formatFileName(name string) string {
@@ -91,12 +137,7 @@ func formatFileName(name string) string {
 	return tempString
 }
 
-// func botSearchMain(query string, episode int, quality string, x *xdcc) {
-// 	fetchBotList(query, episode, quality, x)
-// }
-
-// func fetchBotList(query string, episode int, quality string, x *xdcc) {
-// 	if episode == -1 {
-// 		// search all strings
-// 	}
-// }
+func createMessage(bot, pack string) string {
+	// /msg KareRaisu xdcc send #9924
+	return fmt.Sprintf("/msg %s xdcc send #%s", bot, pack)
+}
