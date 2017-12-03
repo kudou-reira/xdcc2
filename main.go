@@ -37,10 +37,13 @@ func xdccTempSearch(w http.ResponseWriter, r *http.Request) {
 
 		query := r.Form
 
-		fmt.Println("card type", query["cardType"])
-		fmt.Println("url value", query["pageLink"])
+		tempReceived := query["suggestion"][0]
+		fmt.Println("this is the query suggestion", tempReceived)
+		// fmt.Sprintf("%T", tempReceived)
 
-		t := tempSearchMain()
+		// change tempReceived
+		// fake := "hi"
+		t := tempSearchMain(tempReceived)
 
 		d := dataTemp{TempSearch: t}
 
@@ -68,7 +71,7 @@ func xdccBotSearch(w http.ResponseWriter, r *http.Request) {
 		query := r.Form
 
 		fmt.Println("card type", query["cardType"])
-		fmt.Println("url value", query["pageLink"])
+		fmt.Println("url key", query["pageLink"])
 
 		b := botSearchMain()
 
