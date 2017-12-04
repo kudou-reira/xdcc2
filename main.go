@@ -11,6 +11,7 @@ import (
 
 type dataTemp struct {
 	TempSearch []tempSuggested `json:"tempSearches"`
+	TempErrors errorMessage    `json:"tempErrors"`
 }
 
 type dataBot struct {
@@ -43,9 +44,9 @@ func xdccTempSearch(w http.ResponseWriter, r *http.Request) {
 
 		// change tempReceived
 		// fake := "hi"
-		t := tempSearchMain(tempReceived)
+		t, errors := tempSearchMain(tempReceived)
 
-		d := dataTemp{TempSearch: t}
+		d := dataTemp{TempSearch: t, TempErrors: errors}
 
 		tempSearchJSON, err := json.Marshal(d)
 		if err != nil {

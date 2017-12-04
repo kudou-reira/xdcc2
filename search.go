@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+type xdccEpisodes struct {
+	Compilation []xdcc `json: "compilation"`
+}
+
 type xdcc struct {
 	Content []xdccContent `json: "content"`
 }
@@ -28,39 +32,58 @@ type tempSuggested struct {
 	SuggestionContent []xdccContent `json: "suggestionContent"`
 }
 
+type errorMessage struct {
+	Error        bool   `json: "errorExist"`
+	ErrorMessage string `json: "errorMessage"`
+}
+
 // type compiledSuggest
 
-func tempSearchMain(querySuggestion string) []tempSuggested {
-	// query := "gamers"
-	// need to make a function to check if there is a number or episode number in the query
-	// then send it off
+func tempSearchMain(querySuggestion string) ([]tempSuggested, errorMessage) {
+	var tempSuggestion []tempSuggested
+	var err errorMessage
+
 	querySuggestion = strings.TrimSpace(querySuggestion)
 	// query this with match query
 	// 3-gatsu no lion 4, 10
-	episodeNumber := getEpisode(querySuggestion)
-	fmt.Println("this is episode number", episodeNumber)
-	fakeEpisodeNumber := 4
-	// test case
-	querySuggestion = strings.Replace(querySuggestion, " ", "%20", -1)
-	fmt.Println("this is the querySuggestion", querySuggestion)
-	quality := "720p"
-	temp := xdcc{}
-	var collection []tempSuggested
-	// make a slice for suggestions
+	episodeNumbers, errMsg := getEpisode(querySuggestion)
+	fmt.Println("this is episode number", episodeNumbers)
+	fmt.Println("this is the error message", errMsg)
 
-	// is it not working because of async?
-	tempSuggestion := findPacklist(querySuggestion, fakeEpisodeNumber, quality, &temp, collection)
-	// pretty print tempSuggestion
+	if errMsg {
+		err = errorMessage{
+			Error:        errMsg,
+			ErrorMessage: "Your query episode numbers are inverted!",
+		}
+	} else {
+		fakeEpisodeNumber := 4
+		// test case
+		querySuggestion = strings.Replace(querySuggestion, " ", "%20", -1)
+		fmt.Println("this is the querySuggestion", querySuggestion)
+		temp := xdcc{}
+		var collection []tempSuggested
+		// make a slice for suggestions
 
-	// slcT, _ := json.MarshalIndent(tempSuggestion, "", " ")
-	// fmt.Println(string(slcT))
+		// is it not working because of async?
+		tempSuggestion = findPacklist(querySuggestion, fakeEpisodeNumber, &temp, collection)
+		// pretty print tempSuggestion
 
-	// form the query here once you figure out what the user wants
-	// ex. gamers! 9 will return did you mean [HorribleSubs] Gamers! - 09[480].mkv?
-	return tempSuggestion
+		// slcT, _ := json.MarshalIndent(tempSuggestion, "", " ")
+		// fmt.Println(string(slcT))
+
+		// form the query here once you figure out what the user wants
+		// ex. gamers! 9 will return did you mean [HorribleSubs] Gamers! - 09[480].mkv?
+
+		err = errorMessage{
+			Error:        errMsg,
+			ErrorMessage: "",
+		}
+	}
+
+	return tempSuggestion, err
 }
 
-func findPacklist(query string, episode int, quality string, x *xdcc, collection []tempSuggested) []tempSuggested {
+func findPacklist(query string, episode int, x *xdcc, collection []tempSuggested) []tempSuggested {
 	queryString := fmt.Sprintf("https://api.nibl.co.uk:8080/nibl/search?query=%s&episodeNumber=%d", query, episode)
 	getJSON(queryString, x)
 
@@ -78,7 +101,7 @@ func findPacklist(query string, episode int, quality string, x *xdcc, collection
 	return collection
 }
 
-func createSuggestion(episode int, quality string, x *xdcc, collection []tempSuggested) []tempSuggested {
+func createSuggestion(episode int, x *xdcc, collection []tempSuggested) []tempSuggested {
 	for i, j := range x.Content {
 		// suggest := expCheck(j.Name, episode, quality)
 		suggest := j.Name
@@ -151,8 +174,8 @@ func groupDuplicates(c []tempSuggested) []tempSuggested {
 	return c
 }
 
-func getEpisode(name string) string {
-	var episodeNumbers string
+func getEpisode(name string) ([]string, bool) {
+	var episodeNumbers []string
 
 	queryOnly := matchQuery(name)
 	fmt.Println("this is query only", queryOnly)
@@ -171,12 +194,22 @@ func getEpisode(name string) string {
 	arrCont := <-cont1
 	errMsg := <-cont2
 	arrSingle := <-single1
+	arrMult := <-multiple1
 
 	fmt.Println("this is arrCont", arrCont)
 	fmt.Println("there is an error", errMsg)
 	fmt.Println("this is arrSingle", arrSingle)
+	fmt.Println("this is arr multiple", arrMult)
 
-	return episodeNumbers
+	if len(arrCont) == len(arrMult) {
+		episodeNumbers = arrCont
+	} else if len(arrMult) > len(arrCont) && len(arrMult) > len(arrSingle) {
+		episodeNumbers = arrMult
+	} else {
+		episodeNumbers = arrSingle
+	}
+
+	return episodeNumbers, errMsg
 }
 
 func matchContinuous(name string, cont1 chan []string, cont2 chan bool) {
@@ -218,18 +251,33 @@ func matchSingle(name string, single1 chan []string) {
 	single1 <- tempEpisodes
 }
 
-func matchMultiple(name string, multiple chan []string) {
-	// var tempEpisodes []string
+func matchMultiple(name string, multiple1 chan []string) {
+	var tempEpisodes []string
 
 	// process these values next, send back as an array of strings for episode numbers in getEpisode method
 	tempName := strings.Replace(name, matchQuery(name), "", -1)
 	multipleEpisodes := regexp.MustCompile(" ?[0-9]+,?")
 	m := multipleEpisodes.FindAllStringSubmatch(tempName, -1)
+
 	if len(m) > 0 {
-		fmt.Println("this is multiple episodes", m)
+		for _, s := range m {
+			dupeExist := false
+			tempVal := strings.TrimSpace(strings.Replace(s[0], ",", "", -1))
+			if len(tempEpisodes) > 0 {
+				for _, u := range tempEpisodes {
+					if tempVal == u {
+						dupeExist = true
+					}
+				}
+			}
+
+			if dupeExist == false {
+				tempEpisodes = append(tempEpisodes, tempVal)
+			}
+		}
 	}
 
-	// faster just to remove the query from the numbers
+	multiple1 <- tempEpisodes
 }
 
 func matchQuery(name string) string {
