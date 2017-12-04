@@ -34,6 +34,9 @@ func tempSearchMain(querySuggestion string) []tempSuggested {
 	// query := "gamers"
 	// need to make a function to check if there is a number or episode number in the query
 	// then send it off
+	querySuggestion = strings.TrimSpace(querySuggestion)
+	// query this with match query
+	// 3-gatsu no lion 4, 10
 	episodeNumber := getEpisode(querySuggestion)
 	fmt.Println("this is episode number", episodeNumber)
 	fakeEpisodeNumber := 4
@@ -151,32 +154,38 @@ func groupDuplicates(c []tempSuggested) []tempSuggested {
 func getEpisode(name string) string {
 	var episodeNumbers string
 
-	// use go routines and channels to get back stuff
-	arrCont, errMsg := matchContinuous(name)
+	queryOnly := matchQuery(name)
+	fmt.Println("this is query only", queryOnly)
+	// name = strings.Replace(name, queryOnly, "", -1)
+	// fmt.Println("this is the new name", name)
+	// use go routines and channels to get back values
+	cont1 := make(chan []string)
+	cont2 := make(chan bool)
+	single1 := make(chan []string)
+	multiple1 := make(chan []string)
+
+	go matchContinuous(name, cont1, cont2)
+	go matchSingle(name, single1)
+	go matchMultiple(name, multiple1)
+
+	arrCont := <-cont1
+	errMsg := <-cont2
+	arrSingle := <-single1
+
 	fmt.Println("this is arrCont", arrCont)
 	fmt.Println("there is an error", errMsg)
-
-	if len(arrCont) < 1 {
-		singleEpisode := regexp.MustCompile(" [0-9]+")
-		s := singleEpisode.FindAllStringSubmatch(name, -1)
-		if len(s) > 0 {
-			fmt.Println("this is m in episode", s)
-			episodeNumbers = s[0][0]
-		}
-
-		fmt.Println("this is the episode number", episodeNumbers)
-	}
+	fmt.Println("this is arrSingle", arrSingle)
 
 	return episodeNumbers
 }
 
-func matchContinuous(name string) ([]string, bool) {
+func matchContinuous(name string, cont1 chan []string, cont2 chan bool) {
 	var tempEpisodes []string
 	var errMsg bool
-	multipleEpisodes := regexp.MustCompile(" [0-9]+-[0-9]+")
-	m := multipleEpisodes.FindAllStringSubmatch(name, -1)
-	if len(m) > 0 {
-		tempString := strings.Split(strings.TrimSpace(m[0][0]), "-")
+	continuousEpisodes := regexp.MustCompile(" [0-9]+-[0-9]+")
+	c := continuousEpisodes.FindAllStringSubmatch(name, -1)
+	if len(c) > 0 {
+		tempString := strings.Split(strings.TrimSpace(c[0][0]), "-")
 		tempEpisodes = append(tempEpisodes, tempString[0])
 		tempEpisodes = append(tempEpisodes, tempString[1])
 
@@ -193,11 +202,58 @@ func matchContinuous(name string) ([]string, bool) {
 			errMsg = true
 		}
 	}
-	return tempEpisodes, errMsg
+	cont1 <- tempEpisodes
+	cont2 <- errMsg
 }
 
-func matchSingle(name string) {
+func matchSingle(name string, single1 chan []string) {
+	var tempEpisodes []string
 
+	singleEpisode := regexp.MustCompile(" [0-9]+")
+	s := singleEpisode.FindAllStringSubmatch(name, -1)
+	if len(s) > 0 {
+		tempEpisodes = append(tempEpisodes, strings.TrimSpace(s[0][0]))
+	}
+
+	single1 <- tempEpisodes
+}
+
+func matchMultiple(name string, multiple chan []string) {
+	// var tempEpisodes []string
+
+	// process these values next, send back as an array of strings for episode numbers in getEpisode method
+	tempName := strings.Replace(name, matchQuery(name), "", -1)
+	multipleEpisodes := regexp.MustCompile(" ?[0-9]+,?")
+	m := multipleEpisodes.FindAllStringSubmatch(tempName, -1)
+	if len(m) > 0 {
+		fmt.Println("this is multiple episodes", m)
+	}
+
+	// faster just to remove the query from the numbers
+}
+
+func matchQuery(name string) string {
+	// have to be able to find something before a space, number, then comma
+	// ex: space9,
+	var onlyQuery string
+	var cutPoint int
+
+	for i := 0; i < len(name); i++ {
+		if name[i] == 32 && 48 <= name[i+1] && name[i+1] <= 57 {
+			cutPoint = i
+			break
+		}
+	}
+	newName := name[:cutPoint]
+	fmt.Println("this is newName", newName)
+
+	if len(newName) < 1 {
+		newName = strings.TrimSpace(name)
+	}
+
+	onlyQuery = newName
+
+	return onlyQuery
 }
 
 func getJSON(url string, x *xdcc) {
