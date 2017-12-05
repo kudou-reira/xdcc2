@@ -49,10 +49,14 @@ func tempSearchMain(querySuggestion string) ([]episodesSuggested, errorMessage) 
 	querySuggestion = strings.TrimSpace(querySuggestion)
 	// query this with match query
 	// 3-gatsu no lion 4, 10
-	episodeNumbers, errMsg, arrType := getEpisode(querySuggestion)
-	querySuggestion = matchQuery(querySuggestion)
+	// before match query, remove the quality tag [720] for example
+	quality, newQuery := getQuality(querySuggestion)
+	episodeNumbers, errMsg, arrType := getEpisode(newQuery)
+	querySuggestion = matchQuery(newQuery)
+
 	fmt.Println("this is episode number", episodeNumbers)
 	fmt.Println("this is the error message", errMsg)
+	fmt.Println("this is the quality", quality)
 
 	if errMsg {
 		err = errorMessage{
@@ -206,6 +210,21 @@ func createSuggestion(x *xdcc, collection []tempSuggested) []tempSuggested {
 	// collection = groupDuplicates(collection)
 	// do a final group here in case
 	return collection
+}
+
+func getQuality(name string) (string, string) {
+	var tempQualityArr string
+	var tempQuality string
+	quality := regexp.MustCompile(`\[(.*?)\]`)
+	q := quality.FindAllStringSubmatch(name, -1)
+	if len(q) > 0 {
+		fmt.Println("this is tempquality", q)
+		tempQualityArr = q[0][0]
+		tempQuality = q[0][1]
+	}
+	newName := strings.Replace(name, tempQualityArr, "", -1)
+
+	return tempQuality, newName
 }
 
 func getEpisode(name string) ([]int, bool, string) {
