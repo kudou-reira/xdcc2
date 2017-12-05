@@ -9,10 +9,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type episodesSuggested struct {
-	Compilation []tempSuggested `json: "compilation"`
+	Compilation   []tempSuggested `json: "compilation"`
+	EpisodeNumber int             `json: "groupedEpisode"`
 }
 
 type xdcc struct {
@@ -86,6 +88,7 @@ func tempSearchMain(querySuggestion string) ([]episodesSuggested, errorMessage) 
 
 func findPacklist(query string, episode []int, arrType string, x *xdcc, collection []tempSuggested, compilation []episodesSuggested) []episodesSuggested {
 	var tempEpisodeHold []int
+	var wg sync.WaitGroup
 	if arrType == "continuous" {
 		for i := episode[0]; i <= episode[1]; i++ {
 			tempEpisodeHold = append(tempEpisodeHold, i)
@@ -116,32 +119,48 @@ func findPacklist(query string, episode []int, arrType string, x *xdcc, collecti
 
 	} else {
 		// ranging up to a nonexistent value like 1-29 for blen
+
 		var newCollection []tempSuggested
 		for _, singleEP := range episode {
-			queryString := fmt.Sprintf("https://api.nibl.co.uk:8080/nibl/search?query=%s&episodeNumber=%d", query, singleEP)
-			fmt.Println("this is the unique query string", queryString)
-			getJSON(queryString, x)
 
-			// had to create new array for collection, it was reusing the old collection
-			// hence the duplicate values
-			if len(x.Content) > 0 {
-				fmt.Println("this is a valid query")
-				// slcT, _ := json.MarshalIndent(x.Content, "", " ")
-				// fmt.Println("this is the collection of responses")
-				// fmt.Println(string(slcT))
-				newCollection := createSuggestion(x, newCollection)
-				tempCollection := episodesSuggested{
-					Compilation: newCollection,
+			wg.Add(1)
+			go func(singleEP int) {
+				queryString := fmt.Sprintf("https://api.nibl.co.uk:8080/nibl/search?query=%s&episodeNumber=%d", query, singleEP)
+				fmt.Println("this is the unique query string", queryString)
+				getJSON(queryString, x)
+
+				// had to create new array for collection, it was reusing the old collection
+				// hence the duplicate values
+				if len(x.Content) > 0 {
+					fmt.Println("this is a valid query")
+					// slcT, _ := json.MarshalIndent(x.Content, "", " ")
+					// fmt.Println("this is the collection of responses")
+					// fmt.Println(string(slcT))
+					newCollection := createSuggestion(x, newCollection)
+					tempCollection := episodesSuggested{
+						Compilation:   newCollection,
+						EpisodeNumber: singleEP,
+					}
+
+					// slcT, _ := json.MarshalIndent(tempCollection, "", " ")
+					// fmt.Println(string(slcT))
+
+					compilation = append(compilation, tempCollection)
+					wg.Done()
 				}
-
-				slcT, _ := json.MarshalIndent(tempCollection, "", " ")
-				fmt.Println(string(slcT))
-
-				compilation = append(compilation, tempCollection)
-			}
-
+			}(singleEP)
 		}
+		wg.Wait()
+		sortByEpisode(compilation)
 	}
+
+	return compilation
+}
+
+func sortByEpisode(compilation []episodesSuggested) []episodesSuggested {
+	sort.Slice(compilation, func(i, j int) bool {
+		return compilation[i].EpisodeNumber < compilation[j].EpisodeNumber
+	})
 
 	return compilation
 }
