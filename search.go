@@ -72,7 +72,7 @@ func tempSearchMain(querySuggestion string) ([]episodesSuggested, errorMessage) 
 		var collection []tempSuggested
 		// make a slice for suggestions
 
-		compiledSuggestions = findPacklist(querySuggestion, episodeNumbers, arrType, &temp, collection, compilation)
+		compiledSuggestions = findPacklist(querySuggestion, episodeNumbers, quality, arrType, &temp, collection, compilation)
 		// pretty print tempSuggestion
 
 		// slcT, _ := json.MarshalIndent(compiledSuggestions, "", " ")
@@ -90,7 +90,7 @@ func tempSearchMain(querySuggestion string) ([]episodesSuggested, errorMessage) 
 	return compiledSuggestions, err
 }
 
-func findPacklist(query string, episode []int, arrType string, x *xdcc, collection []tempSuggested, compilation []episodesSuggested) []episodesSuggested {
+func findPacklist(query string, episode []int, quality string, arrType string, x *xdcc, collection []tempSuggested, compilation []episodesSuggested) []episodesSuggested {
 	var tempEpisodeHold []int
 	var wg sync.WaitGroup
 	if arrType == "continuous" {
@@ -112,7 +112,7 @@ func findPacklist(query string, episode []int, arrType string, x *xdcc, collecti
 			// slcT, _ := json.MarshalIndent(x.Content, "", " ")
 			// fmt.Println("this is the collection of responses")
 			// fmt.Println(string(slcT))
-			collection = createSuggestion(x, collection)
+			collection = createSuggestion(x, collection, quality)
 
 			tempCollection := episodesSuggested{
 				Compilation: collection,
@@ -131,6 +131,7 @@ func findPacklist(query string, episode []int, arrType string, x *xdcc, collecti
 			go func(singleEP int) {
 				queryString := fmt.Sprintf("https://api.nibl.co.uk:8080/nibl/search?query=%s&episodeNumber=%d", query, singleEP)
 				fmt.Println("this is the unique query string", queryString)
+				fmt.Println("this is the quality", quality)
 				getJSON(queryString, x)
 
 				// had to create new array for collection, it was reusing the old collection
@@ -140,7 +141,7 @@ func findPacklist(query string, episode []int, arrType string, x *xdcc, collecti
 					// slcT, _ := json.MarshalIndent(x.Content, "", " ")
 					// fmt.Println("this is the collection of responses")
 					// fmt.Println(string(slcT))
-					newCollection := createSuggestion(x, newCollection)
+					newCollection := createSuggestion(x, newCollection, quality)
 					tempCollection := episodesSuggested{
 						Compilation:   newCollection,
 						EpisodeNumber: singleEP,
@@ -169,16 +170,12 @@ func sortByEpisode(compilation []episodesSuggested) []episodesSuggested {
 	return compilation
 }
 
-func createSuggestion(x *xdcc, collection []tempSuggested) []tempSuggested {
+func createSuggestion(x *xdcc, collection []tempSuggested, quality string) []tempSuggested {
 	for _, j := range x.Content {
 		// suggest := expCheck(j.Name, episode, quality)
 		suggest := j.Name
-
-		// check the loop
-		// fmt.Println("hi", i)
-		// creates a new collection of suggested names from x.content
-		if len(suggest) > 0 {
-
+		qualityExist := checkQuality(suggest, quality)
+		if len(suggest) > 0 && qualityExist {
 			run := true
 			for k := range collection {
 				if suggest == collection[k].Suggestion {
@@ -210,6 +207,22 @@ func createSuggestion(x *xdcc, collection []tempSuggested) []tempSuggested {
 	// collection = groupDuplicates(collection)
 	// do a final group here in case
 	return collection
+}
+
+func checkQuality(name string, quality string) bool {
+	var isQuality bool
+
+	if len(quality) > 0 {
+		check := regexp.MustCompile(quality)
+		c := check.FindAllStringSubmatch(name, -1)
+		if len(c) > 0 {
+			isQuality = true
+		}
+	} else if len(quality) == 0 {
+		isQuality = true
+	}
+
+	return isQuality
 }
 
 func getQuality(name string) (string, string) {
