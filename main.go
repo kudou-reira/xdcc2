@@ -10,8 +10,8 @@ import (
 )
 
 type dataTemp struct {
-	TempSearch []tempSuggested `json:"tempSearches"`
-	TempErrors errorMessage    `json:"tempErrors"`
+	TempSearch []episodesSuggested `json:"tempSearches"`
+	TempErrors errorMessage        `json:"tempErrors"`
 }
 
 type dataBot struct {
