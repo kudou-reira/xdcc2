@@ -13,8 +13,8 @@ import (
 )
 
 type episodesSuggested struct {
-	Compilation   []tempSuggested `json: "compilation"`
 	EpisodeNumber int             `json: "groupedEpisode"`
+	Compilation   []tempSuggested `json: "compilation"`
 }
 
 type xdcc struct {
@@ -32,6 +32,7 @@ type xdccContent struct {
 
 type tempSuggested struct {
 	Suggestion        string        `json: "suggestion"`
+	SuggestionEpisode int           `json: "suggestionEpisode"`
 	SuggestionContent []xdccContent `json: "suggestionContent"`
 }
 
@@ -115,11 +116,14 @@ func findPacklist(query string, episode []int, quality string, arrType string, x
 			collection = createSuggestion(x, collection, quality)
 
 			tempCollection := episodesSuggested{
-				Compilation: collection,
+				Compilation:   collection,
+				EpisodeNumber: -1,
 			}
 
 			compilation = append(compilation, tempCollection)
 		}
+		// needs own sorting method
+		sortByEpisodeCollection(compilation)
 
 	} else {
 		// ranging up to a nonexistent value like 1-29 for blen
@@ -156,16 +160,36 @@ func findPacklist(query string, episode []int, quality string, arrType string, x
 			}(singleEP)
 		}
 		wg.Wait()
-		sortByEpisode(compilation)
+		sortByEpisodeCompilation(compilation)
 	}
 
 	return compilation
 }
 
-func sortByEpisode(compilation []episodesSuggested) []episodesSuggested {
+func sortByEpisodeCompilation(compilation []episodesSuggested) []episodesSuggested {
 	sort.Slice(compilation, func(i, j int) bool {
 		return compilation[i].EpisodeNumber < compilation[j].EpisodeNumber
 	})
+
+	return compilation
+}
+
+func sortByEpisodeCollection(compilation []episodesSuggested) []episodesSuggested {
+	// fmt.Println("this is compilation", compilation)
+
+	tempCompilation := compilation[0].Compilation
+
+	sort.Slice(tempCompilation, func(i, j int) bool {
+		return tempCompilation[i].SuggestionEpisode < tempCompilation[j].SuggestionEpisode
+	})
+
+	// slcT, _ := json.MarshalIndent(tempCompilation[0].SuggestionEpisode, "", " ")
+	// slcT2, _ := json.MarshalIndent(compilation[0].Compilation[1].SuggestionEpisode, "", " ")
+	// slcT3, _ := json.MarshalIndent(compilation, "", " ")
+	// fmt.Println("this is the collection of responses")
+	// fmt.Println(string(slcT))
+	// fmt.Println(string(slcT2))
+	// fmt.Println(string(slcT3))
 
 	return compilation
 }
@@ -193,6 +217,7 @@ func createSuggestion(x *xdcc, collection []tempSuggested, quality string) []tem
 				var tempSuggestionContent []xdccContent
 				temp := tempSuggested{
 					Suggestion:        suggest,
+					SuggestionEpisode: j.EpisodeNumber,
 					SuggestionContent: append(tempSuggestionContent, j),
 				}
 				collection = append(collection, temp)
@@ -369,15 +394,32 @@ func matchQuery(name string) string {
 	// have to be able to find something before a space, number, then comma
 	// ex: space9,
 	var onlyQuery string
+	var newName string
 	var cutPoint int
-
+	fmt.Println("this is name", name)
+	fmt.Println("this is match query running")
+	// handle the case where it's a space then a bracket or parentheses
 	for i := 0; i < len(name); i++ {
-		if name[i] == 32 && 48 <= name[i+1] && name[i+1] <= 57 {
-			cutPoint = i
-			break
+		if i+1 < len(name) {
+			if name[i] == 32 && 48 <= name[i+1] && name[i+1] <= 57 {
+				// it won't check i+1 because it doesn't exist in the case that there is no number
+				fmt.Println("this is inside the if statement")
+				cutPoint = i
+				break
+			}
+		} else {
+			fmt.Println("this is the else statement")
 		}
 	}
-	newName := name[:cutPoint]
+
+	fmt.Println("this is the cutpoint value", cutPoint)
+
+	if cutPoint == 0 {
+		newName = name
+	} else {
+		newName = name[:cutPoint]
+	}
+
 	fmt.Println("this is newName", newName)
 
 	if len(newName) < 1 {
