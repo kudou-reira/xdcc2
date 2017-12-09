@@ -48,43 +48,53 @@ func tempSearchMain(querySuggestion string) ([]episodesSuggested, errorMessage) 
 	var err errorMessage
 
 	querySuggestion = strings.TrimSpace(querySuggestion)
-	// query this with match query
-	// 3-gatsu no lion 4, 10
-	// before match query, remove the quality tag [720] for example
-	quality, newQuery := getQuality(querySuggestion)
-	episodeNumbers, errMsg, arrType := getEpisode(newQuery)
-	querySuggestion = matchQuery(newQuery)
+	lengthCheck := len(querySuggestion)
 
-	fmt.Println("this is episode number", episodeNumbers)
-	fmt.Println("this is the error message", errMsg)
-	fmt.Println("this is the quality", quality)
-
-	if errMsg {
+	switch lengthCheck {
+	case 0:
 		err = errorMessage{
-			Error:        errMsg,
-			ErrorMessage: "Your query episode numbers are inverted!",
+			Error:        true,
+			ErrorMessage: "Invalid query entered",
 		}
-	} else {
-		// test case
-		querySuggestion = strings.Replace(querySuggestion, " ", "%20", -1)
-		fmt.Println("this is the querySuggestion", querySuggestion)
-		temp := xdcc{}
-		var compilation []episodesSuggested
-		var collection []tempSuggested
-		// make a slice for suggestions
+	default:
+		// query this with match query
+		// 3-gatsu no lion 4, 10
+		// before match query, remove the quality tag [720] for example
+		quality, newQuery := getQuality(querySuggestion)
+		episodeNumbers, errMsg, arrType := getEpisode(newQuery)
+		querySuggestion = matchQuery(newQuery)
 
-		compiledSuggestions = findPacklist(querySuggestion, episodeNumbers, quality, arrType, &temp, collection, compilation)
-		// pretty print tempSuggestion
+		fmt.Println("this is episode number", episodeNumbers)
+		fmt.Println("this is the error message", errMsg)
+		fmt.Println("this is the quality", quality)
 
-		// slcT, _ := json.MarshalIndent(compiledSuggestions, "", " ")
-		// fmt.Println(string(slcT))
+		if errMsg {
+			err = errorMessage{
+				Error:        errMsg,
+				ErrorMessage: "Your query episode numbers are inverted!",
+			}
+		} else {
+			// test case
+			querySuggestion = strings.Replace(querySuggestion, " ", "%20", -1)
+			fmt.Println("this is the querySuggestion", querySuggestion)
+			temp := xdcc{}
+			var compilation []episodesSuggested
+			var collection []tempSuggested
+			// make a slice for suggestions
 
-		// form the query here once you figure out what the user wants
-		// ex. gamers! 9 will return did you mean [HorribleSubs] Gamers! - 09[480].mkv?
+			compiledSuggestions = findPacklist(querySuggestion, episodeNumbers, quality, arrType, &temp, collection, compilation)
+			// pretty print tempSuggestion
 
-		err = errorMessage{
-			Error:        errMsg,
-			ErrorMessage: "",
+			// slcT, _ := json.MarshalIndent(compiledSuggestions, "", " ")
+			// fmt.Println(string(slcT))
+
+			// form the query here once you figure out what the user wants
+			// ex. gamers! 9 will return did you mean [HorribleSubs] Gamers! - 09[480].mkv?
+
+			err = errorMessage{
+				Error:        errMsg,
+				ErrorMessage: "",
+			}
 		}
 	}
 
@@ -123,7 +133,9 @@ func findPacklist(query string, episode []int, quality string, arrType string, x
 			compilation = append(compilation, tempCollection)
 		}
 		// needs own sorting method
-		sortByEpisodeCollection(compilation)
+		if len(compilation) > 0 {
+			sortByEpisodeCollection(compilation)
+		}
 
 	} else {
 		// ranging up to a nonexistent value like 1-29 for blen

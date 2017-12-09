@@ -15,7 +15,7 @@ type dataTemp struct {
 }
 
 type dataBot struct {
-	BotSearch []groupBots `json:"botSearches"`
+	BotSearch []bots `json:"botSearches"`
 }
 
 func main() {
@@ -71,10 +71,13 @@ func xdccBotSearch(w http.ResponseWriter, r *http.Request) {
 
 		query := r.Form
 
-		fmt.Println("card type", query["cardType"])
-		fmt.Println("url key", query["pageLink"])
+		// fmt.Println("this is the botSearch", query)
+		tempReceived := query["queue[]"]
+		// fmt.Println("this is the stack", tempReceived)
 
-		b := botSearchMain()
+		b := botSearchMain(tempReceived)
+
+		// fmt.Println("this is botSearch not printing", b)
 
 		d := dataBot{BotSearch: b}
 
@@ -82,6 +85,8 @@ func xdccBotSearch(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		// fmt.Println("this is botSearch JSON", botSearchJSON)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

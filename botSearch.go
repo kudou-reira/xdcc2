@@ -6,12 +6,13 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
 type bots struct {
-	Content []groupBots `json: "content"`
+	BotOverall []groupBots `json: "content"`
 }
 
 type groupBots struct {
@@ -28,28 +29,60 @@ type botContent struct {
 	MessageCall string `json: "messageCall"`
 }
 
-func botSearchMain() []groupBots {
+func botSearchMain(stack []string) []bots {
 	// testlink
 	// https://nibl.co.uk/bots.php?search=[HorribleSubs] Gamers! - 04 [720p]
 
-	botLink := "https://nibl.co.uk/bots.php?search="
-	// botQuery := "[HorribleSubs] Gamers! - 04 [720p]"
-	// botQuery := "gamers 04"
-	botQuery := "net-juu 08"
-	combinedBotQuery := botLink + botQuery
-	newCombinedQuery := strings.Replace(combinedBotQuery, " ", "%20", -1)
-	// testCombine := "https://nibl.co.uk/bots.php?search=gamers"
-	fmt.Println("this is replaced strings", newCombinedQuery)
+	fmt.Println("this is the stack in botsearchmain", stack)
 
-	var botCollection []groupBots
+	tempBotLinks := createBotLinks(stack)
+	fmt.Println("this is tempBotLinks", tempBotLinks)
+
 	// format the combinedBotQuery
 	// replace spaces with %20
-	tempBotCollection := accessBotPage(newCombinedQuery, botCollection)
 
-	slcT, _ := json.MarshalIndent(tempBotCollection, "", " ")
+	// newCombinedQuery := "https://nibl.co.uk/bots.php?search=gamers"
+	temp := startBotSearch(tempBotLinks)
+
+	slcT, _ := json.MarshalIndent(temp, "", " ")
 	fmt.Println(string(slcT))
 
-	return tempBotCollection
+	return temp
+}
+
+func startBotSearch(tempBotLinks []string) []bots {
+	var wg sync.WaitGroup
+	var allBots []bots
+	for _, singleQuery := range tempBotLinks {
+		wg.Add(1)
+		var botCollection []groupBots
+		go func(singleQuery string) {
+			tempBotCollection := accessBotPage(singleQuery, botCollection)
+			tempBot := bots{
+				BotOverall: tempBotCollection,
+			}
+			allBots = append(allBots, tempBot)
+			wg.Done()
+		}(singleQuery)
+	}
+	wg.Wait()
+
+	return allBots
+}
+
+func createBotLinks(stack []string) []string {
+	var botLinks []string
+	for _, j := range stack {
+		baseLink := "https://nibl.co.uk/bots.php?search="
+		// botQuery := "[HorribleSubs] Gamers! - 04 [720p]"
+		// botQuery := "gamers 04"
+		combinedBotQuery := baseLink + j
+		newCombinedQuery := strings.Replace(combinedBotQuery, " ", "%20", -1)
+		// testCombine := "https://nibl.co.uk/bots.php?search=gamers"
+		fmt.Println("this is replaced strings", newCombinedQuery)
+		botLinks = append(botLinks, newCombinedQuery)
+	}
+	return botLinks
 }
 
 func accessBotPage(combinedQuery string, collection []groupBots) []groupBots {
@@ -74,7 +107,6 @@ func scrapeBotPage(combinedQuery string, collection []groupBots, waitBot chan []
 	doc.Find(".botlistitem").Each(func(index int, item *goquery.Selection) {
 		// use index to determine if jp event only/event character only
 		// fmt.Println("botname is", item.Text())
-		fmt.Println(index)
 
 		botName := item.Find(".name").Text()
 		packNumber := item.Find(".packnumber").Text()
@@ -93,6 +125,8 @@ func scrapeBotPage(combinedQuery string, collection []groupBots, waitBot chan []
 		// fmt.Println("this is the botName", botName)
 
 		// add quality to tempGroupBot
+		// fmt.Println("this is the tempBot before going", tempBot)
+		// fmt.Println("this is the collection before going", collection)
 
 		if index == 0 {
 			var tempCollection []botContent
@@ -140,8 +174,15 @@ func createMessage(bot, pack string) string {
 }
 
 func extractQuality(name string) string {
+	var quality string
 	re := regexp.MustCompile(`\[(.*?)\]`)
 	m := re.FindAllStringSubmatch(name, -1)
 	// fmt.Println("this is m", m)
-	return m[1][1]
+	if len(m) > 1 {
+		fmt.Println("this is extract quality", m)
+		quality = m[1][1]
+	} else {
+		quality = "Not a media file"
+	}
+	return quality
 }
