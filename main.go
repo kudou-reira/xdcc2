@@ -23,6 +23,7 @@ func main() {
 	// routes consist of a path and a handler function.
 	r.HandleFunc("/xdccTempSearch", xdccTempSearch).Methods("GET")
 	r.HandleFunc("/xdccBotSearch", xdccBotSearch).Methods("GET")
+	r.HandleFunc("/xdccOptimizeDL", xdccOptimizeDL).Methods("GET")
 
 	// bind to a port and pass our router in
 	http.Handle("/", &middleWareServer{r})
@@ -94,6 +95,59 @@ func xdccBotSearch(w http.ResponseWriter, r *http.Request) {
 
 		// temp := []byte("this is searchXDCC for bots")
 		// w.Write(temp)
+	}
+}
+
+//rename OPTIMIZE
+
+func xdccOptimizeDL(w http.ResponseWriter, r *http.Request) {
+	if r != nil {
+		err := r.ParseForm()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		query := r.Form
+
+		// fmt.Println("this is the optimizeDL", query)
+
+		tempReceived := query["downloads[]"]
+
+		var receivedBots bots
+
+		tempReceivedBytes := []byte(tempReceived[0])
+
+		err = json.Unmarshal(tempReceivedBytes, &receivedBots)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("this is the receivedBots", receivedBots)
+
+		slcT, _ := json.MarshalIndent(receivedBots, "", " ")
+		fmt.Println(string(slcT))
+
+		// fmt.Println("these are the downloads", tempReceived)
+
+		// optimizeDLMain(tempReceived)
+
+		// fmt.Println("this is botSearch not printing", b)
+
+		// d := dataBot{BotSearch: o}
+
+		// botSearchJSON, err := json.Marshal(d)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+
+		// fmt.Println("this is botSearch JSON", botSearchJSON)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// w.Write(botSearchJSON)
+
+		temp := []byte("this is searchXDCC for optimize DL")
+		w.Write(temp)
 	}
 }
 
