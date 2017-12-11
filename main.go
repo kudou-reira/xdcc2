@@ -28,10 +28,19 @@ func main() {
 	r.HandleFunc("/xdccTempSearch", xdccTempSearch).Methods("GET")
 	r.HandleFunc("/xdccBotSearch", xdccBotSearch).Methods("GET")
 	r.HandleFunc("/xdccOptimizeDL", xdccOptimizeDL).Methods("GET")
+	r.HandleFunc("/", xdccRoot).Methods("GET")
 
 	// bind to a port and pass our router in
 	http.Handle("/", &middleWareServer{r})
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func xdccRoot(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+
+	temp := []byte("this is xdccRoot")
+	w.Write(temp)
 }
 
 func xdccTempSearch(w http.ResponseWriter, r *http.Request) {
