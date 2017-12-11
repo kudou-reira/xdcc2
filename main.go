@@ -18,6 +18,10 @@ type dataBot struct {
 	BotSearch []bots `json:"botSearches"`
 }
 
+type dataOptimizedBot struct {
+	OptimizedBot []uniqueBot `json:"optimizedBots"`
+}
+
 func main() {
 	r := mux.NewRouter()
 	// routes consist of a path and a handler function.
@@ -113,41 +117,34 @@ func xdccOptimizeDL(w http.ResponseWriter, r *http.Request) {
 
 		tempReceived := query["downloads[]"]
 
-		var receivedBots bots
+		var receivedBots []bots
 
-		tempReceivedBytes := []byte(tempReceived[0])
+		for i := range tempReceived {
+			var singleReceived bots
+			tempReceivedBytes := []byte(tempReceived[i])
 
-		err = json.Unmarshal(tempReceivedBytes, &receivedBots)
-		if err != nil {
-			panic(err)
+			err = json.Unmarshal(tempReceivedBytes, &singleReceived)
+			if err != nil {
+				panic(err)
+			}
+			receivedBots = append(receivedBots, singleReceived)
 		}
 
-		fmt.Println("this is the receivedBots", receivedBots)
+		o := optimizeDLMain(receivedBots)
 
-		slcT, _ := json.MarshalIndent(receivedBots, "", " ")
-		fmt.Println(string(slcT))
+		// slcT, _ := json.MarshalIndent(o, "", " ")
+		// fmt.Println(string(slcT))
 
-		// fmt.Println("these are the downloads", tempReceived)
+		d := dataOptimizedBot{OptimizedBot: o}
 
-		// optimizeDLMain(tempReceived)
-
-		// fmt.Println("this is botSearch not printing", b)
-
-		// d := dataBot{BotSearch: o}
-
-		// botSearchJSON, err := json.Marshal(d)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-
-		// fmt.Println("this is botSearch JSON", botSearchJSON)
+		optimizedBotJSON, err := json.Marshal(d)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		// w.Write(botSearchJSON)
-
-		temp := []byte("this is searchXDCC for optimize DL")
-		w.Write(temp)
+		w.Write(optimizedBotJSON)
 	}
 }
 
