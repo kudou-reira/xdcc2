@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 )
 
@@ -11,6 +12,7 @@ type uniqueBot struct {
 	FileName    string `json: "fileName"`
 	BotToUse    string `json: "botToUse"`
 	MessageCall string `json: "callToUse"`
+	PackNumber  int    `json: "packNumber"`
 }
 
 type simplifiedBot struct {
@@ -60,6 +62,15 @@ func generateMessageCall(receivedBots []bots, optimized []uniqueBot) []uniqueBot
 					messageToUse = l.MessageCall
 					optimized[m].MessageCall = messageToUse
 					fmt.Println("this is what should be used", optimized[m].MessageCall)
+
+					// convert packnumber to int
+					intPack, err := strconv.Atoi(l.PackNumber)
+					if err != nil {
+						// handle error
+						panic(err)
+					}
+
+					optimized[m].PackNumber = intPack
 					break
 				}
 			}

@@ -32,7 +32,9 @@ func main() {
 
 	// bind to a port and pass our router in
 	http.Handle("/", &middleWareServer{r})
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
+	// log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
 }
 
 func xdccRoot(w http.ResponseWriter, r *http.Request) {
