@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"sync"
@@ -215,6 +216,44 @@ func findBotFrequency(unoptimized []simplifiedBot) map[string]int {
 			}
 		}
 	}
+
+	fmt.Println("this is findBotFrequency", a)
+
+	// remove anything with NEW or v6
+
+	newA := removeProblemBots(a)
+
+	fmt.Println("this is newA", newA)
+
+	return a
+}
+
+func removeProblemBots(a map[string]int) map[string]int {
+	new := regexp.MustCompile("NEW")
+	holland := regexp.MustCompile("HOLLAND")
+	v6 := regexp.MustCompile("v6")
+
+	var tempRemove []string
+
+	for k := range a {
+		// fmt.Printf("key[%s] value[%d]\n", k, v)
+		tempNew := new.FindAllString(k, -1)
+		tempHolland := holland.FindAllString(k, -1)
+		v6 := v6.FindAllString(k, -1)
+
+		// fmt.Println("this is temp", temp)
+		if len(tempNew) > 0 || len(tempHolland) > 0 || len(v6) > 0 {
+			tempRemove = append(tempRemove, k)
+		}
+	}
+
+	for _, n := range tempRemove {
+		delete(a, n)
+	}
+
+	fmt.Println("this is values to remove from map", tempRemove)
+	fmt.Println("this is new a", a)
+
 	return a
 }
 
