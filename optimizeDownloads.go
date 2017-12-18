@@ -10,10 +10,11 @@ import (
 )
 
 type uniqueBot struct {
-	FileName    string `json: "fileName"`
-	BotToUse    string `json: "botToUse"`
-	MessageCall string `json: "callToUse"`
-	PackNumber  int    `json: "packNumber"`
+	FileName      string `json: "fileName"`
+	BotToUse      string `json: "botToUse"`
+	MessageCall   string `json: "callToUse"`
+	PackNumber    int    `json: "packNumber"`
+	ChannelToJoin string `json: "channelToJoin"`
 }
 
 type simplifiedBot struct {
@@ -27,6 +28,26 @@ type kv struct {
 }
 
 func optimizeDLMain(receivedBots []bots) []uniqueBot {
+	var slicedBotCollection [][]bots
+	// var tempArr []bots
+
+	chunkSize := 2
+	for i := 0; i < len(receivedBots); i += chunkSize {
+		end := i + chunkSize
+
+		if end > len(receivedBots) {
+			end = len(receivedBots)
+		}
+
+		slicedBotCollection = append(slicedBotCollection, receivedBots[i:end])
+	}
+
+	slcTA, _ := json.MarshalIndent(slicedBotCollection, "", " ")
+	fmt.Println("this is slicedbotcollection")
+	fmt.Println("this is the length of sliced bot collection", len(slicedBotCollection))
+	fmt.Println(string(slcTA))
+	fmt.Println("")
+
 	collectionUnoptimized := findUniqueBots(receivedBots)
 
 	slcT, _ := json.MarshalIndent(collectionUnoptimized, "", " ")
@@ -35,8 +56,32 @@ func optimizeDLMain(receivedBots []bots) []uniqueBot {
 	frequency := findBotFrequency(collectionUnoptimized)
 	collectionOptimized := compareBots(collectionUnoptimized, frequency)
 	botsOptimized := generateMessageCall(receivedBots, collectionOptimized)
+	assignedBots := assignChannel(botsOptimized)
 
-	return botsOptimized
+	return assignedBots
+}
+
+func assignChannel(botsOptimal []uniqueBot) []uniqueBot {
+	var brackets = regexp.MustCompile(`\[(.*?)\]`)
+	for i, j := range botsOptimal {
+		fmt.Println("this is bots optimal", j)
+		temp := brackets.FindAllStringSubmatch(j.FileName, -1)
+		if len(temp) > 0 {
+			// fmt.Println(temp)
+			// fmt.Println(temp[0][1])
+			channel := temp[0][1]
+			switch channel {
+			case "DeadFish":
+				botsOptimal[i].ChannelToJoin = "[deadfish]"
+			case "BakedFish":
+				botsOptimal[i].ChannelToJoin = "[deadfish]"
+			default:
+				botsOptimal[i].ChannelToJoin = channel
+			}
+		}
+	}
+
+	return botsOptimal
 }
 
 func generateMessageCall(receivedBots []bots, optimized []uniqueBot) []uniqueBot {
