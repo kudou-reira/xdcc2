@@ -28,6 +28,7 @@ func main() {
 	r.HandleFunc("/xdccTempSearch", xdccTempSearch).Methods("GET")
 	r.HandleFunc("/xdccBotSearch", xdccBotSearch).Methods("GET")
 	r.HandleFunc("/xdccOptimizeDL", xdccOptimizeDL).Methods("GET")
+	r.HandleFunc("/xdccAnilist", xdccAnilist).Methods("GET")
 	r.HandleFunc("/", xdccRoot).Methods("GET")
 
 	// bind to a port and pass our router in
@@ -35,6 +36,16 @@ func main() {
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 	// log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
+}
+
+func xdccAnilist(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+
+	anilistMain()
+
+	temp := []byte("this is xdccAnilist")
+	w.Write(temp)
 }
 
 func xdccRoot(w http.ResponseWriter, r *http.Request) {
