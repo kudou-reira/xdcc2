@@ -22,6 +22,10 @@ type dataOptimizedBot struct {
 	OptimizedBot []uniqueBot `json:"optimizedBots"`
 }
 
+type dataMedia struct {
+	Media []Media `json:"media"`
+}
+
 func main() {
 	r := mux.NewRouter()
 	// routes consist of a path and a handler function.
@@ -39,13 +43,21 @@ func main() {
 }
 
 func xdccAnilist(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
+	a := anilistMain()
+
+	m := dataMedia{Media: a}
+
+	mediaJSON, err := json.Marshal(m)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	w.Write(mediaJSON)
 
-	anilistMain()
-
-	temp := []byte("this is xdccAnilist")
-	w.Write(temp)
+	// temp := []byte("this is xdccAnilist")
+	// w.Write(temp)
 }
 
 func xdccRoot(w http.ResponseWriter, r *http.Request) {

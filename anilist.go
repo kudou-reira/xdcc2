@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"sync"
 )
 
 type GraphQL struct {
@@ -22,18 +24,61 @@ type Data struct {
 }
 
 type Media struct {
-	ID    int    `json:"id"`
-	Title Title  `json:"title"`
-	Type  string `json:"type"`
+	ID                int               `json:"id"`
+	CoverImage        CoverImage        `json:"coverImage"`
+	Title             Title             `json:"title"`
+	Studios           Studios           `json:"studios"`
+	Description       string            `json:"description"`
+	Type              string            `json:"type"`
+	Format            string            `json:"format"`
+	Episodes          int               `json:"episodes"`
+	Genres            []string          `json:"genres"`
+	AverageScore      int               `json:"averageScore"`
+	Popularity        int               `json:"popularity"`
+	StartDate         StartDate         `json:"startDate"`
+	EndDate           EndDate           `json:"endDate"`
+	Season            string            `json:"season"`
+	NextAiringEpisode NextAiringEpisode `json:"nextAiringEpisode"`
+}
+
+type Page struct {
+	PageInfo PageInfo `json:"pageInfo"`
+	Media    []Media  `json:"media"`
 }
 
 type Title struct {
 	UserPreferred string `json:"userPreferred"`
 }
 
-type Page struct {
-	PageInfo PageInfo `json:"pageInfo"`
-	Media    []Media  `json:"media"`
+type Studios struct {
+	Nodes Nodes `json:"nodes"`
+}
+
+type Nodes struct {
+	Name string `json:"name"`
+}
+
+type CoverImage struct {
+	large  string `json:"large"`
+	medium string `json:"medium"`
+}
+
+type StartDate struct {
+	Year  int `json:"year"`
+	Month int `json:"month"`
+	Day   int `json:"dat"`
+}
+
+type EndDate struct {
+	Year  int `json:"year"`
+	Month int `json:"month"`
+	Day   int `json:"dat"`
+}
+
+type NextAiringEpisode struct {
+	AiringAt        int `json:"airingAt"`
+	TimeUntilAiring int `json:"timeUntilAiring"`
+	Episode         int `json:"episode"`
 }
 
 type PageInfo struct {
@@ -44,12 +89,8 @@ type PageInfo struct {
 	HasNextPage bool `json:"hasNextPage"`
 }
 
-func anilistMain() {
+func anilistMain() []Media {
 	fmt.Println("this is anilistMain")
-
-	url := "https://graphql.anilist.co"
-
-	client := http.Client{}
 
 	queryGraph := `query (
 		$page: Int,
@@ -86,6 +127,16 @@ func anilistMain() {
 			title {
 			  userPreferred
 			}
+			coverImage {
+			  large
+			  medium
+			}			
+			studios {
+				nodes{
+					name
+		  		}
+			}
+			description
 			type
 			format
 			episodes
@@ -115,8 +166,29 @@ func anilistMain() {
 	  }`
 
 	variablesGraph := `{
-		"startDate": "2017%"
+		"startDate": "2017%",
+		"season": "FALL"
 	}`
+
+	var tempMedia []Media
+
+	tempMedia, totalPages := fetchInitialQuery(queryGraph, variablesGraph, tempMedia)
+	fmt.Println("total pages", totalPages)
+
+	tempMedia = fetchSubsequent(queryGraph, tempMedia, totalPages)
+
+	return tempMedia
+	// tempMedia now has all the media queries []Media
+	// next, sort by until airing date
+	//
+
+	// slcT, _ := json.MarshalIndent(tempMedia, "", " ")
+	// fmt.Println("response body", string(slcT))
+}
+
+func fetchInitialQuery(queryGraph string, variablesGraph string, tempMedia []Media) ([]Media, int) {
+	url := "https://graphql.anilist.co"
+	client := http.Client{}
 
 	tempGraphQL := GraphQL{
 		Query:     queryGraph,
@@ -147,7 +219,7 @@ func anilistMain() {
 	fmt.Println("response Headers:", resp.Header)
 	body, _ := ioutil.ReadAll(resp.Body)
 
-	fmt.Println("response Body:", string(body))
+	// fmt.Println("response Body:", string(body))
 
 	raw := Raw{}
 	err = json.Unmarshal(body, &raw)
@@ -155,17 +227,100 @@ func anilistMain() {
 		panic(err)
 	}
 
-	fmt.Println("this is data", raw)
-
-	// slcT, _ := json.MarshalIndent(string(body), "", " ")
+	// slcT, _ := json.MarshalIndent(raw, "", " ")
 	// fmt.Println("response body", string(slcT))
+
+	tempMedia = raw.Data.Page.Media
+	totalPages := raw.Data.Page.PageInfo.LastPage
+
+	// slcT, _ := json.MarshalIndent(tempMedia, "", " ")
+	// fmt.Println("response body", string(slcT))
+
+	return tempMedia, totalPages
 }
 
-// func getPages(body []byte) (*page, error) {
-// 	var p = new(page)
-// 	err := json.Unmarshal(body, &p)
-// 	if err != nil {
-// 		fmt.Println("whoops:", err)
-// 	}
-// 	return p, err
-// }
+func fetchSubsequent(queryGraph string, tempMedia []Media, totalPages int) []Media {
+	// put all of this in for loop
+
+	// inject template string
+	// variablesGraph := `{
+	// 	"startDate": "2017%",
+	// 	"season": "FALL"
+	// }`
+
+	var wg sync.WaitGroup
+	wg.Add(totalPages - 1)
+
+	for i := 2; i <= totalPages; i++ {
+		go func(i int) {
+			defer wg.Done()
+			bracket1 := "{"
+			bracket2 := "}"
+			startDate := `"startDate"`
+			season := `"season"`
+			currentPage := `"page"`
+			colon := ":"
+			singleQuote := `"`
+			comma := ","
+
+			startValue := "2017%"
+			seasonValue := "FALL"
+			currentPageValue := strconv.Itoa(i)
+
+			variablesGraphSeason := bracket1 + "\n" +
+				startDate + colon + singleQuote + startValue + singleQuote + comma + "\n" +
+				season + colon + singleQuote + seasonValue + singleQuote + comma + "\n" +
+				currentPage + colon + singleQuote + currentPageValue + singleQuote + "\n" +
+				bracket2
+
+			fmt.Println("this is variablesgraph", variablesGraphSeason)
+
+			url := "https://graphql.anilist.co"
+			client := http.Client{}
+
+			tempGraphQL := GraphQL{
+				Query:     queryGraph,
+				Variables: variablesGraphSeason,
+			}
+
+			graphBytes, err := json.Marshal(tempGraphQL)
+			if err != nil {
+				panic(err)
+			}
+
+			req, err := http.NewRequest("POST", url, bytes.NewBuffer(graphBytes))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Accept", "application/json")
+
+			resp, err := client.Do(req)
+			if err != nil {
+				fmt.Println("Unable to reach the server.")
+			}
+
+			defer resp.Body.Close()
+
+			fmt.Println("response Status:", resp.Status)
+			fmt.Println("response Headers:", resp.Header)
+			body, _ := ioutil.ReadAll(resp.Body)
+
+			fmt.Println("response Body:", string(body))
+
+			raw := Raw{}
+			err = json.Unmarshal(body, &raw)
+			if err != nil {
+				panic(err)
+			}
+
+			newMedia := raw.Data.Page.Media
+
+			// slcT, _ := json.MarshalIndent(newMedia, "", " ")
+			// fmt.Println("response body", string(slcT))
+
+			tempMedia = append(tempMedia, newMedia...)
+		}(i)
+	}
+
+	wg.Wait()
+
+	return tempMedia
+}
