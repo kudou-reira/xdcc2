@@ -51,7 +51,7 @@ type Title struct {
 }
 
 type Studios struct {
-	Nodes Nodes `json:"nodes"`
+	Nodes []Nodes `json:"nodes"`
 }
 
 type Nodes struct {
@@ -59,8 +59,8 @@ type Nodes struct {
 }
 
 type CoverImage struct {
-	large  string `json:"large"`
-	medium string `json:"medium"`
+	Large  string `json:"large"`
+	Medium string `json:"medium"`
 }
 
 type StartDate struct {

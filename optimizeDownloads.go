@@ -27,7 +27,7 @@ type kv struct {
 	Value int
 }
 
-func optimizeDLMain(receivedBots []bots) []uniqueBot {
+func optimizeDLMain(receivedBots []bots) [][]uniqueBot {
 	var slicedBotCollection [][]bots
 	// var tempArr []bots
 
@@ -48,17 +48,33 @@ func optimizeDLMain(receivedBots []bots) []uniqueBot {
 	fmt.Println(string(slcTA))
 	fmt.Println("")
 
-	collectionUnoptimized := findUniqueBots(receivedBots)
+	var assignedSlicedBots [][]uniqueBot
 
-	slcT, _ := json.MarshalIndent(collectionUnoptimized, "", " ")
-	fmt.Println(string(slcT))
+	for i := range slicedBotCollection {
+		collectionUnoptimized := findUniqueBots(slicedBotCollection[i])
 
-	frequency := findBotFrequency(collectionUnoptimized)
-	collectionOptimized := compareBots(collectionUnoptimized, frequency)
-	botsOptimized := generateMessageCall(receivedBots, collectionOptimized)
-	assignedBots := assignChannel(botsOptimized)
+		slcT, _ := json.MarshalIndent(collectionUnoptimized, "", " ")
+		fmt.Println(string(slcT))
 
-	return assignedBots
+		frequency := findBotFrequency(collectionUnoptimized)
+		collectionOptimized := compareBots(collectionUnoptimized, frequency)
+		botsOptimized := generateMessageCall(slicedBotCollection[i], collectionOptimized)
+		assignedBots := assignChannel(botsOptimized)
+
+		assignedSlicedBots = append(assignedSlicedBots, assignedBots)
+	}
+
+	// collectionUnoptimized := findUniqueBots(receivedBots)
+
+	// slcT, _ := json.MarshalIndent(collectionUnoptimized, "", " ")
+	// fmt.Println(string(slcT))
+
+	// frequency := findBotFrequency(collectionUnoptimized)
+	// collectionOptimized := compareBots(collectionUnoptimized, frequency)
+	// botsOptimized := generateMessageCall(receivedBots, collectionOptimized)
+	// assignedBots := assignChannel(botsOptimized)
+
+	return assignedSlicedBots
 }
 
 func assignChannel(botsOptimal []uniqueBot) []uniqueBot {

@@ -19,7 +19,7 @@ type dataBot struct {
 }
 
 type dataOptimizedBot struct {
-	OptimizedBot []uniqueBot `json:"optimizedBots"`
+	OptimizedBot [][]uniqueBot `json:"optimizedBots"`
 }
 
 type dataMedia struct {
