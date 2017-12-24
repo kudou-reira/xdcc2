@@ -27,6 +27,7 @@ type Media struct {
 	ID                int               `json:"id"`
 	CoverImage        CoverImage        `json:"coverImage"`
 	Title             Title             `json:"title"`
+	Status            string            `json:"status"`
 	Studios           Studios           `json:"studios"`
 	Description       string            `json:"description"`
 	Type              string            `json:"type"`
@@ -89,7 +90,7 @@ type PageInfo struct {
 	HasNextPage bool `json:"hasNextPage"`
 }
 
-func anilistMain() []Media {
+func anilistMain(season string, startDate string) []Media {
 	fmt.Println("this is anilistMain")
 
 	queryGraph := `query (
@@ -136,6 +137,7 @@ func anilistMain() []Media {
 					name
 		  		}
 			}
+			status
 			description
 			type
 			format
@@ -165,25 +167,72 @@ func anilistMain() []Media {
 		}
 	  }`
 
-	variablesGraph := `{
-		"startDate": "2017%",
-		"season": "FALL"
-	}`
+	// variablesGraph := `{
+	// 	"startDate": "2017%",
+	// 	"season": "FALL"
+	// }`
+
+	variablesGraph := createVariableString(season, startDate, "1")
+
+	// construct the variables graph in another function
 
 	var tempMedia []Media
 
 	tempMedia, totalPages := fetchInitialQuery(queryGraph, variablesGraph, tempMedia)
 	fmt.Println("total pages", totalPages)
 
-	tempMedia = fetchSubsequent(queryGraph, tempMedia, totalPages)
+	tempMedia = fetchSubsequent(queryGraph, tempMedia, totalPages, season, startDate)
 
-	return tempMedia
-	// tempMedia now has all the media queries []Media
-	// next, sort by until airing date
-	//
+	// format tempMedia description
+	// tempMedia = formatDescription(tempMedia)
 
 	// slcT, _ := json.MarshalIndent(tempMedia, "", " ")
-	// fmt.Println("response body", string(slcT))
+	// fmt.Println("formatted tempMedia", string(slcT))
+
+	return tempMedia
+}
+
+// func formatDescription(tempMedia []Media) []Media {
+// 	for _, j := range tempMedia {
+// 		tempDesc := j.Description
+// 		// fmt.Println(tempDesc)
+// 		j.Description = strings.Replace(tempDesc, "<br>", "\n", -1)
+// 		fmt.Println(j.Description)
+// 	}
+
+// 	return tempMedia
+// }
+
+func createVariableString(tempSeason string, tempStartDate string, tempPage string) string {
+	var variablesGraph string
+
+	bracket1 := "{"
+	bracket2 := "}"
+	startDate := `"startDate"`
+	season := `"season"`
+	currentPage := `"page"`
+	colon := ":"
+	singleQuote := `"`
+	comma := ","
+
+	startValue := tempStartDate
+	seasonValue := tempSeason
+
+	switch tempPage {
+	case "1":
+		variablesGraph = bracket1 + "\n" +
+			startDate + colon + singleQuote + startValue + singleQuote + comma + "\n" +
+			season + colon + singleQuote + seasonValue + singleQuote + "\n" +
+			bracket2
+	default:
+		variablesGraph = bracket1 + "\n" +
+			startDate + colon + singleQuote + startValue + singleQuote + comma + "\n" +
+			season + colon + singleQuote + seasonValue + singleQuote + comma + "\n" +
+			currentPage + colon + singleQuote + tempPage + singleQuote + "\n" +
+			bracket2
+	}
+
+	return variablesGraph
 }
 
 func fetchInitialQuery(queryGraph string, variablesGraph string, tempMedia []Media) ([]Media, int) {
@@ -200,8 +249,8 @@ func fetchInitialQuery(queryGraph string, variablesGraph string, tempMedia []Med
 		panic(err)
 	}
 
-	fmt.Println("this is tempGraphQL", tempGraphQL)
-	fmt.Println("this is graphBytes", graphBytes)
+	// fmt.Println("this is tempGraphQL", tempGraphQL)
+	// fmt.Println("this is graphBytes", graphBytes)
 	// fmt.Println("this is string graphBytes", string(graphBytes))
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(graphBytes))
@@ -215,8 +264,8 @@ func fetchInitialQuery(queryGraph string, variablesGraph string, tempMedia []Med
 
 	defer resp.Body.Close()
 
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
+	// fmt.Println("response Status:", resp.Status)
+	// fmt.Println("response Headers:", resp.Header)
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	// fmt.Println("response Body:", string(body))
@@ -239,7 +288,7 @@ func fetchInitialQuery(queryGraph string, variablesGraph string, tempMedia []Med
 	return tempMedia, totalPages
 }
 
-func fetchSubsequent(queryGraph string, tempMedia []Media, totalPages int) []Media {
+func fetchSubsequent(queryGraph string, tempMedia []Media, totalPages int, season string, startDate string) []Media {
 	// put all of this in for loop
 
 	// inject template string
@@ -254,24 +303,27 @@ func fetchSubsequent(queryGraph string, tempMedia []Media, totalPages int) []Med
 	for i := 2; i <= totalPages; i++ {
 		go func(i int) {
 			defer wg.Done()
-			bracket1 := "{"
-			bracket2 := "}"
-			startDate := `"startDate"`
-			season := `"season"`
-			currentPage := `"page"`
-			colon := ":"
-			singleQuote := `"`
-			comma := ","
 
-			startValue := "2017%"
-			seasonValue := "FALL"
+			// bracket1 := "{"
+			// bracket2 := "}"
+			// startDate := `"startDate"`
+			// season := `"season"`
+			// currentPage := `"page"`
+			// colon := ":"
+			// singleQuote := `"`
+			// comma := ","
+
+			// startValue := "2017%"
+			// seasonValue := "FALL"
 			currentPageValue := strconv.Itoa(i)
 
-			variablesGraphSeason := bracket1 + "\n" +
-				startDate + colon + singleQuote + startValue + singleQuote + comma + "\n" +
-				season + colon + singleQuote + seasonValue + singleQuote + comma + "\n" +
-				currentPage + colon + singleQuote + currentPageValue + singleQuote + "\n" +
-				bracket2
+			// variablesGraphSeason := bracket1 + "\n" +
+			// 	startDate + colon + singleQuote + startValue + singleQuote + comma + "\n" +
+			// 	season + colon + singleQuote + seasonValue + singleQuote + comma + "\n" +
+			// 	currentPage + colon + singleQuote + currentPageValue + singleQuote + "\n" +
+			// 	bracket2
+
+			variablesGraphSeason := createVariableString(season, startDate, currentPageValue)
 
 			fmt.Println("this is variablesgraph", variablesGraphSeason)
 
@@ -303,7 +355,7 @@ func fetchSubsequent(queryGraph string, tempMedia []Media, totalPages int) []Med
 			fmt.Println("response Headers:", resp.Header)
 			body, _ := ioutil.ReadAll(resp.Body)
 
-			fmt.Println("response Body:", string(body))
+			// fmt.Println("response Body:", string(body))
 
 			raw := Raw{}
 			err = json.Unmarshal(body, &raw)

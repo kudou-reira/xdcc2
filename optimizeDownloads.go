@@ -31,7 +31,7 @@ func optimizeDLMain(receivedBots []bots) [][]uniqueBot {
 	var slicedBotCollection [][]bots
 	// var tempArr []bots
 
-	chunkSize := 2
+	chunkSize := 3
 	for i := 0; i < len(receivedBots); i += chunkSize {
 		end := i + chunkSize
 

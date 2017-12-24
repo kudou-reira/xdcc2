@@ -43,21 +43,33 @@ func main() {
 }
 
 func xdccAnilist(w http.ResponseWriter, r *http.Request) {
-	a := anilistMain()
+	if r != nil {
+		err := r.ParseForm()
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	m := dataMedia{Media: a}
+		query := r.Form
 
-	mediaJSON, err := json.Marshal(m)
-	if err != nil {
-		log.Fatal(err)
+		tempSeason := query["season"][0]
+		tempStartDate := query["year"][0]
+
+		a := anilistMain(tempSeason, tempStartDate)
+
+		m := dataMedia{Media: a}
+
+		mediaJSON, err := json.Marshal(m)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(mediaJSON)
+
+		// temp := []byte("this is xdccAnilist")
+		// w.Write(temp)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(mediaJSON)
-
-	// temp := []byte("this is xdccAnilist")
-	// w.Write(temp)
 }
 
 func xdccRoot(w http.ResponseWriter, r *http.Request) {
