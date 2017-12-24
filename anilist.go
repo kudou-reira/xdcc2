@@ -304,25 +304,7 @@ func fetchSubsequent(queryGraph string, tempMedia []Media, totalPages int, seaso
 		go func(i int) {
 			defer wg.Done()
 
-			// bracket1 := "{"
-			// bracket2 := "}"
-			// startDate := `"startDate"`
-			// season := `"season"`
-			// currentPage := `"page"`
-			// colon := ":"
-			// singleQuote := `"`
-			// comma := ","
-
-			// startValue := "2017%"
-			// seasonValue := "FALL"
 			currentPageValue := strconv.Itoa(i)
-
-			// variablesGraphSeason := bracket1 + "\n" +
-			// 	startDate + colon + singleQuote + startValue + singleQuote + comma + "\n" +
-			// 	season + colon + singleQuote + seasonValue + singleQuote + comma + "\n" +
-			// 	currentPage + colon + singleQuote + currentPageValue + singleQuote + "\n" +
-			// 	bracket2
-
 			variablesGraphSeason := createVariableString(season, startDate, currentPageValue)
 
 			fmt.Println("this is variablesgraph", variablesGraphSeason)
