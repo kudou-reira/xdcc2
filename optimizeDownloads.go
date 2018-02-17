@@ -31,7 +31,7 @@ func optimizeDLMain(receivedBots []bots) [][]uniqueBot {
 	var slicedBotCollection [][]bots
 	// var tempArr []bots
 
-	chunkSize := 3
+	chunkSize := 2
 	for i := 0; i < len(receivedBots); i += chunkSize {
 		end := i + chunkSize
 
@@ -101,6 +101,7 @@ func assignChannel(botsOptimal []uniqueBot) []uniqueBot {
 }
 
 func generateMessageCall(receivedBots []bots, optimized []uniqueBot) []uniqueBot {
+	fmt.Println("this is the entire optimized slice", optimized)
 	for _, j := range receivedBots {
 		messageToUse := ""
 		for _, l := range j.BotOverall[0].BotSpecies {
@@ -117,12 +118,12 @@ func generateMessageCall(receivedBots []bots, optimized []uniqueBot) []uniqueBot
 			// 	}
 			// 	fmt.Println(n)
 			// }
+			fmt.Println("this is the bot species", l)
 
 			for m, n := range optimized {
 				if l.BotName == n.BotToUse && l.FileName == n.FileName {
 					fmt.Println("this is inside optimized", optimized[m])
-					messageToUse = l.MessageCall
-					optimized[m].MessageCall = messageToUse
+					optimized[m].MessageCall = l.MessageCall
 					fmt.Println("this is what should be used", optimized[m].MessageCall)
 
 					// convert packnumber to int

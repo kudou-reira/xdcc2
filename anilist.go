@@ -73,7 +73,7 @@ type StartDate struct {
 type EndDate struct {
 	Year  int `json:"year"`
 	Month int `json:"month"`
-	Day   int `json:"dat"`
+	Day   int `json:"day"`
 }
 
 type NextAiringEpisode struct {
@@ -92,6 +92,8 @@ type PageInfo struct {
 
 func anilistMain(season string, startDate string) []Media {
 	fmt.Println("this is anilistMain")
+	fmt.Println("this is the season", season)
+	fmt.Println("this is the startDate", startDate)
 
 	queryGraph := `query (
 		$page: Int,
@@ -191,17 +193,6 @@ func anilistMain(season string, startDate string) []Media {
 
 	return tempMedia
 }
-
-// func formatDescription(tempMedia []Media) []Media {
-// 	for _, j := range tempMedia {
-// 		tempDesc := j.Description
-// 		// fmt.Println(tempDesc)
-// 		j.Description = strings.Replace(tempDesc, "<br>", "\n", -1)
-// 		fmt.Println(j.Description)
-// 	}
-
-// 	return tempMedia
-// }
 
 func createVariableString(tempSeason string, tempStartDate string, tempPage string) string {
 	var variablesGraph string

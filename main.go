@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/gorilla/mux"
 )
@@ -39,8 +38,8 @@ func main() {
 	// bind to a port and pass our router in
 	http.Handle("/", &middleWareServer{r})
 
-	// log.Fatal(http.ListenAndServe(":8080", nil))
-	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
+	log.Fatal(http.ListenAndServe(":8080", nil))
+	// log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
 }
 
 func xdccAnilist(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +53,9 @@ func xdccAnilist(w http.ResponseWriter, r *http.Request) {
 
 		tempSeason := query["season"][0]
 		tempStartDate := query["year"][0]
+
+		fmt.Println("this is the tempSeason", tempSeason)
+		fmt.Println("this is the tempStartDate", tempStartDate)
 
 		a := anilistMain(tempSeason, tempStartDate)
 
